@@ -2,7 +2,8 @@ import express from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { protect, adminOnly } from "../middlewares/auth.js";
+import { protect } from "../middlewares/auth.js";
+import { adminOnly } from "../middlewares/admin.js";
 
 const router = express.Router();
 
