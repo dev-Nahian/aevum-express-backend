@@ -194,3 +194,40 @@ export const getRelatedProducts = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * @desc    Get autocomplete product suggestions
+ * @route   GET /api/products/search/suggestions
+ * @access  Public
+ */
+export const getProductSuggestions = async (req, res, next) => {
+  const { q } = req.query;
+
+  try {
+    if (!q) {
+      return res.status(200).json({
+        success: true,
+        suggestions: [],
+      });
+    }
+
+    const query = {
+      $or: [
+        { title: { $regex: q, $options: "i" } },
+        { category: { $regex: q, $options: "i" } },
+        { subCategory: { $regex: q, $options: "i" } },
+      ],
+    };
+
+    const products = await Product.find(query)
+      .select("id _id title image price category")
+      .limit(6);
+
+    res.status(200).json({
+      success: true,
+      suggestions: products,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

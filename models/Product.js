@@ -63,6 +63,23 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    sizeChartImage: {
+      type: String,
+      default: "",
+    },
+    sizeType: {
+      type: String,
+      enum: ["standard", "ml", "custom"],
+      default: "standard",
+    },
+    sizes: [
+      {
+        size: { type: String, required: true },
+        enabled: { type: Boolean, default: true },
+        stock: { type: Number, default: 0 },
+        sequence: { type: Number, default: 0 },
+      }
+    ],
   },
   {
     timestamps: true,

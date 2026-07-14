@@ -19,6 +19,7 @@ import {
   adminDeleteCMS,
 } from "../controllers/cmsController.js";
 import User from "../models/User.js";
+import Review from "../models/Review.js";
 
 const router = express.Router();
 
@@ -63,6 +64,39 @@ router.put("/users/:id/make-admin", async (req, res, next) => {
       { new: true }
     ).select("-password");
     res.json({ success: true, user });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ── Reviews Management ────────────────────────────────────
+router.get("/reviews", async (req, res, next) => {
+  try {
+    const reviews = await Review.find()
+      .populate("product", "title image price id")
+      .populate("user", "name email")
+      .sort({ createdAt: -1 });
+    res.json({ success: true, reviews });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put("/reviews/:id", async (req, res, next) => {
+  const { status } = req.body;
+  if (!["approved", "rejected", "pending"].includes(status)) {
+    return res.status(400).json({ success: false, message: "Invalid review status" });
+  }
+  try {
+    const review = await Review.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    );
+    if (!review) {
+      return res.status(404).json({ success: false, message: "Review not found" });
+    }
+    res.json({ success: true, message: `Review status updated to ${status}`, review });
   } catch (error) {
     next(error);
   }

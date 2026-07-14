@@ -12,6 +12,7 @@ import adminRoutes from "./routes/adminRoutes.js";
 import cmsRoutes from "./routes/cmsRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
+import wishlistRoutes from "./routes/wishlistRoutes.js";
 import { notFound, errorHandler } from "./middlewares/error.js";
 
 // Load env variables
@@ -50,6 +51,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/cms", cmsRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/upload", uploadRoutes);
+app.use("/api/wishlist", wishlistRoutes);
 
 // Fallback middlewares
 app.use(notFound);
