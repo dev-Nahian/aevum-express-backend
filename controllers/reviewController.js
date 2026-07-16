@@ -26,7 +26,7 @@ export const getProductReviews = async (req, res, next) => {
     }
 
     const reviews = await Review.find({ product: product._id, status: "approved" })
-      .populate("user", "name email")
+      .populate("user", "fullName email")
       .sort({ createdAt: -1 });
 
     const numReviews = reviews.length;
@@ -92,7 +92,7 @@ export const createReview = async (req, res, next) => {
     const review = await Review.create({
       product: product._id,
       user: req.user._id,
-      name: req.user.name,
+      name: req.user.fullName,
       rating: Number(rating),
       comment,
     });

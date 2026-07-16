@@ -74,7 +74,7 @@ router.get("/reviews", async (req, res, next) => {
   try {
     const reviews = await Review.find()
       .populate("product", "title image price id")
-      .populate("user", "name email")
+      .populate("user", "fullName email")
       .sort({ createdAt: -1 });
     res.json({ success: true, reviews });
   } catch (error) {
