@@ -5,7 +5,8 @@ const sendEmail = async (options) => {
     // Create a transporter
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || "smtp.mailtrap.io",
-      port: process.env.SMTP_PORT || 2525,
+      port: parseInt(process.env.SMTP_PORT) || 2525,
+      secure: process.env.SMTP_SECURE === "true" || parseInt(process.env.SMTP_PORT) === 465,
       auth: {
         user: process.env.SMTP_USER || "",
         pass: process.env.SMTP_PASS || "",
