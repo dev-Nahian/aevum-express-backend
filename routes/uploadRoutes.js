@@ -37,6 +37,8 @@ function checkFileType(file, cb) {
   }
 }
 
+import { uploadToCloudinary } from "../utils/cloudinary.js";
+
 const upload = multer({
   storage,
   fileFilter(req, file, cb) {
@@ -44,16 +46,46 @@ const upload = multer({
   },
 });
 
-router.post("/", protect, adminOnly, upload.single("image"), (req, res) => {
+router.post("/", protect, adminOnly, upload.single("image"), async (req, res, next) => {
   if (!req.file) {
     return res.status(400).json({ message: "No image file provided" });
   }
-  // The path served to the client
-  const filePath = `/uploads/${req.file.filename}`;
-  res.status(201).json({
-    message: "Image uploaded successfully",
-    url: filePath,
-  });
+
+  const localFilePath = req.file.path;
+
+  try {
+    // If Cloudinary credentials are set up, upload to Cloudinary
+    if (
+      process.env.CLOUDINARY_CLOUD_NAME &&
+      process.env.CLOUDINARY_API_KEY &&
+      process.env.CLOUDINARY_API_SECRET
+    ) {
+      const result = await uploadToCloudinary(localFilePath, "aevum_uploads");
+      
+      // Remove temporary file from local server
+      if (fs.existsSync(localFilePath)) {
+        fs.unlinkSync(localFilePath);
+      }
+
+      return res.status(201).json({
+        message: "Image uploaded successfully to Cloudinary",
+        url: result.secure_url,
+      });
+    }
+
+    // Fallback: Local upload path served to the client
+    const filePath = `/uploads/${req.file.filename}`;
+    res.status(201).json({
+      message: "Image uploaded successfully to local storage (Cloudinary credentials missing)",
+      url: filePath,
+    });
+  } catch (error) {
+    // Clean up local file in case of error
+    if (fs.existsSync(localFilePath)) {
+      fs.unlinkSync(localFilePath);
+    }
+    next(error);
+  }
 });
 
 export default router;
