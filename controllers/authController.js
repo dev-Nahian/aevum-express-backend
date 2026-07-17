@@ -79,7 +79,7 @@ export const registerUser = async (req, res, next) => {
       </div>
     `;
 
-    await sendEmail({
+    const emailSent = await sendEmail({
       to: email,
       subject: emailSubject,
       text: emailText,
@@ -90,6 +90,8 @@ export const registerUser = async (req, res, next) => {
       success: true,
       message: "Registration initiated. Verification OTP code has been sent.",
       email,
+      ...(process.env.NODE_ENV === "development" && { devOtp: otpCode }),
+      ...(!emailSent && { emailError: true })
     });
   } catch (error) {
     next(error);
@@ -207,7 +209,7 @@ export const resendOTP = async (req, res, next) => {
       </div>
     `;
 
-    await sendEmail({
+    const emailSent = await sendEmail({
       to: email,
       subject: emailSubject,
       text: emailText,
@@ -217,6 +219,8 @@ export const resendOTP = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: "Verification code resent successfully.",
+      ...(process.env.NODE_ENV === "development" && { devOtp: otpCode }),
+      ...(!emailSent && { emailError: true })
     });
   } catch (error) {
     next(error);
@@ -260,7 +264,7 @@ export const loginUser = async (req, res, next) => {
       await OTP.create({ email, code: otpCode });
 
       // Log OTP and send
-      await sendEmail({
+      const emailSent = await sendEmail({
         to: email,
         subject: "Verify your Maison Aevum Account",
         text: `Your verification code is: ${otpCode}`,
@@ -271,6 +275,8 @@ export const loginUser = async (req, res, next) => {
         message: "Email is not verified. A verification code has been sent to your email.",
         email,
         requiresVerification: true,
+        ...(process.env.NODE_ENV === "development" && { devOtp: otpCode }),
+        ...(!emailSent && { emailError: true })
       });
     }
 
@@ -320,12 +326,14 @@ export const forgotPassword = async (req, res, next) => {
     const subject = "Reset your Maison Aevum Password";
     const text = `To reset your password, please use the verification code: ${resetCode}\n\nIf you did not request a password reset, please ignore this email.`;
     
-    await sendEmail({ to: email, subject, text });
+    const emailSent = await sendEmail({ to: email, subject, text });
 
     res.status(200).json({
       success: true,
       message: "Password reset instructions sent.",
       email,
+      ...(process.env.NODE_ENV === "development" && { devOtp: resetCode }),
+      ...(!emailSent && { emailError: true })
     });
   } catch (error) {
     next(error);

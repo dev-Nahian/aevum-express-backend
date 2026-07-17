@@ -26,14 +26,15 @@ const sendEmail = async (options) => {
     if (process.env.SMTP_USER && process.env.SMTP_PASS) {
       await transporter.sendMail(mailOptions);
       console.log(`Email successfully sent to ${options.to}`);
+      return true;
     } else {
       console.log("-----------------------------------------");
       console.log(`[EMAIL SIMULATOR] To: ${options.to}`);
       console.log(`[EMAIL SIMULATOR] Subject: ${options.subject}`);
       console.log(`[EMAIL SIMULATOR] Message:\n${options.text}`);
       console.log("-----------------------------------------");
+      return false;
     }
-    return true;
   } catch (error) {
     console.error(`Email sending failed: ${error.message}`);
     // Log the message anyway so developer doesn't get blocked
