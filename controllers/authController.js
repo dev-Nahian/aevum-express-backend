@@ -79,19 +79,19 @@ export const registerUser = async (req, res, next) => {
       </div>
     `;
 
-    const emailSent = await sendEmail({
+    // Send email asynchronously in the background so registration is instant
+    sendEmail({
       to: email,
       subject: emailSubject,
       text: emailText,
       html: emailHtml,
-    });
+    }).catch((err) => console.error(`Background email send error: ${err.message}`));
 
     res.status(201).json({
       success: true,
       message: "Registration initiated. Verification OTP code has been sent.",
       email,
       ...(process.env.NODE_ENV === "development" && { devOtp: otpCode }),
-      ...(!emailSent && { emailError: true })
     });
   } catch (error) {
     next(error);
@@ -209,18 +209,18 @@ export const resendOTP = async (req, res, next) => {
       </div>
     `;
 
-    const emailSent = await sendEmail({
+    // Send email asynchronously in the background
+    sendEmail({
       to: email,
       subject: emailSubject,
       text: emailText,
       html: emailHtml,
-    });
+    }).catch((err) => console.error(`Background email send error: ${err.message}`));
 
     res.status(200).json({
       success: true,
       message: "Verification code resent successfully.",
       ...(process.env.NODE_ENV === "development" && { devOtp: otpCode }),
-      ...(!emailSent && { emailError: true })
     });
   } catch (error) {
     next(error);
@@ -264,11 +264,12 @@ export const loginUser = async (req, res, next) => {
       await OTP.create({ email, code: otpCode });
 
       // Log OTP and send
-      const emailSent = await sendEmail({
+      // Send email asynchronously in the background
+      sendEmail({
         to: email,
         subject: "Verify your Maison Aevum Account",
         text: `Your verification code is: ${otpCode}`,
-      });
+      }).catch((err) => console.error(`Background email send error: ${err.message}`));
 
       return res.status(403).json({
         success: false,
@@ -276,7 +277,6 @@ export const loginUser = async (req, res, next) => {
         email,
         requiresVerification: true,
         ...(process.env.NODE_ENV === "development" && { devOtp: otpCode }),
-        ...(!emailSent && { emailError: true })
       });
     }
 
@@ -326,14 +326,16 @@ export const forgotPassword = async (req, res, next) => {
     const subject = "Reset your Maison Aevum Password";
     const text = `To reset your password, please use the verification code: ${resetCode}\n\nIf you did not request a password reset, please ignore this email.`;
     
-    const emailSent = await sendEmail({ to: email, subject, text });
+    // Send email asynchronously in the background
+    sendEmail({ to: email, subject, text }).catch((err) =>
+      console.error(`Background email send error: ${err.message}`)
+    );
 
     res.status(200).json({
       success: true,
       message: "Password reset instructions sent.",
       email,
       ...(process.env.NODE_ENV === "development" && { devOtp: resetCode }),
-      ...(!emailSent && { emailError: true })
     });
   } catch (error) {
     next(error);
