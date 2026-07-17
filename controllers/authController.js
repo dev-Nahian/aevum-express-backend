@@ -120,8 +120,10 @@ export const verifyOTP = async (req, res, next) => {
       throw new Error("Verification code has expired or is invalid");
     }
 
-    // Check if code matches
-    if (otpRecord.code !== code && !(process.env.NODE_ENV === "development" && code === "999999")) {
+    // Check if code matches (allow 999999 bypass in development or if explicitly allowed by env)
+    const isBypassAllowed = (process.env.NODE_ENV === "development" && code === "999999") || 
+                            (process.env.ALLOW_OTP_BYPASS === "true" && code === "999999");
+    if (otpRecord.code !== code && !isBypassAllowed) {
       res.status(400);
       throw new Error("Incorrect verification code");
     }
