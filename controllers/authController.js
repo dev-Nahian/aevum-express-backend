@@ -23,8 +23,10 @@ export const registerUser = async (req, res, next) => {
       throw new Error("Please fill in all required fields");
     }
 
+    const normalizedEmail = String(email).toLowerCase().trim();
+
     // Check if user already exists
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({ email: normalizedEmail });
 
     if (userExists) {
       if (userExists.isVerified) {
@@ -42,7 +44,7 @@ export const registerUser = async (req, res, next) => {
       // Create new user (pending verification)
       await User.create({
         fullName,
-        email,
+        email: normalizedEmail,
         mobileNumber,
         password,
         agreeTerms,
@@ -54,11 +56,11 @@ export const registerUser = async (req, res, next) => {
     const otpCode = generateOTPCode();
 
     // Delete any existing OTP for this email
-    await OTP.deleteMany({ email });
+    await OTP.deleteMany({ email: normalizedEmail });
 
     // Save OTP to database
     await OTP.create({
-      email,
+      email: normalizedEmail,
       code: otpCode,
     });
 
@@ -81,7 +83,7 @@ export const registerUser = async (req, res, next) => {
 
     // Send email asynchronously in the background so registration is instant
     sendEmail({
-      to: email,
+      to: normalizedEmail,
       subject: emailSubject,
       text: emailText,
       html: emailHtml,
@@ -90,7 +92,7 @@ export const registerUser = async (req, res, next) => {
     res.status(201).json({
       success: true,
       message: "Registration initiated. Verification OTP code has been sent.",
-      email,
+      email: normalizedEmail,
       ...(process.env.NODE_ENV === "development" && { devOtp: otpCode }),
     });
   } catch (error) {
@@ -112,8 +114,11 @@ export const verifyOTP = async (req, res, next) => {
       throw new Error("Email and verification code are required");
     }
 
+    const normalizedEmail = String(email).toLowerCase().trim();
+    const normalizedCode = String(code).trim();
+
     // Find the latest OTP record for this email
-    const otpRecord = await OTP.findOne({ email }).sort({ createdAt: -1 });
+    const otpRecord = await OTP.findOne({ email: normalizedEmail }).sort({ createdAt: -1 });
 
     if (!otpRecord) {
       res.status(400);
@@ -121,15 +126,16 @@ export const verifyOTP = async (req, res, next) => {
     }
 
     // Check if code matches (allow 999999 bypass in development or if explicitly allowed by env)
-    const isBypassAllowed = (process.env.NODE_ENV === "development" && code === "999999") || 
-                            (process.env.ALLOW_OTP_BYPASS === "true" && code === "999999");
-    if (otpRecord.code !== code && !isBypassAllowed) {
+    const isBypassAllowed = (process.env.NODE_ENV === "development" && normalizedCode === "999999") || 
+                            (process.env.ALLOW_OTP_BYPASS === "true" && normalizedCode === "999999");
+    
+    if (String(otpRecord.code).trim() !== normalizedCode && !isBypassAllowed) {
       res.status(400);
       throw new Error("Incorrect verification code");
     }
 
     // Find the user
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
       res.status(404);
@@ -141,7 +147,7 @@ export const verifyOTP = async (req, res, next) => {
     await user.save();
 
     // Delete the OTP code
-    await OTP.deleteMany({ email });
+    await OTP.deleteMany({ email: normalizedEmail });
 
     res.status(200).json({
       success: true,
@@ -175,8 +181,10 @@ export const resendOTP = async (req, res, next) => {
       throw new Error("Email is required");
     }
 
+    const normalizedEmail = String(email).toLowerCase().trim();
+
     // Check if user exists
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       res.status(404);
       throw new Error("No account registered under this email");
@@ -186,11 +194,11 @@ export const resendOTP = async (req, res, next) => {
     const otpCode = generateOTPCode();
 
     // Delete existing OTPs
-    await OTP.deleteMany({ email });
+    await OTP.deleteMany({ email: normalizedEmail });
 
     // Save to DB
     await OTP.create({
-      email,
+      email: normalizedEmail,
       code: otpCode,
     });
 
@@ -213,7 +221,7 @@ export const resendOTP = async (req, res, next) => {
 
     // Send email asynchronously in the background
     sendEmail({
-      to: email,
+      to: normalizedEmail,
       subject: emailSubject,
       text: emailText,
       html: emailHtml,
@@ -243,8 +251,10 @@ export const loginUser = async (req, res, next) => {
       throw new Error("Please enter both email and password");
     }
 
+    const normalizedEmail = String(email).toLowerCase().trim();
+
     // Find user by email and explicitly select password field
-    const user = await User.findOne({ email }).select("+password");
+    const user = await User.findOne({ email: normalizedEmail }).select("+password");
 
     if (!user) {
       res.status(401);
@@ -262,13 +272,13 @@ export const loginUser = async (req, res, next) => {
     if (!user.isVerified) {
       // Generate OTP code for them to complete verification
       const otpCode = generateOTPCode();
-      await OTP.deleteMany({ email });
-      await OTP.create({ email, code: otpCode });
+      await OTP.deleteMany({ email: normalizedEmail });
+      await OTP.create({ email: normalizedEmail, code: otpCode });
 
       // Log OTP and send
       // Send email asynchronously in the background
       sendEmail({
-        to: email,
+        to: normalizedEmail,
         subject: "Verify your Maison Aevum Account",
         text: `Your verification code is: ${otpCode}`,
       }).catch((err) => console.error(`Background email send error: ${err.message}`));
@@ -276,7 +286,7 @@ export const loginUser = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: "Email is not verified. A verification code has been sent to your email.",
-        email,
+        email: normalizedEmail,
         requiresVerification: true,
         ...(process.env.NODE_ENV === "development" && { devOtp: otpCode }),
       });
@@ -313,7 +323,8 @@ export const forgotPassword = async (req, res, next) => {
       throw new Error("Email is required");
     }
 
-    const user = await User.findOne({ email });
+    const normalizedEmail = String(email).toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       res.status(404);
       throw new Error("No account found with this email");
@@ -321,22 +332,22 @@ export const forgotPassword = async (req, res, next) => {
 
     // We can generate a 6-digit reset code
     const resetCode = generateOTPCode();
-    await OTP.deleteMany({ email });
-    await OTP.create({ email, code: resetCode });
+    await OTP.deleteMany({ email: normalizedEmail });
+    await OTP.create({ email: normalizedEmail, code: resetCode });
 
     // Send reset instructions
     const subject = "Reset your Maison Aevum Password";
     const text = `To reset your password, please use the verification code: ${resetCode}\n\nIf you did not request a password reset, please ignore this email.`;
     
     // Send email asynchronously in the background
-    sendEmail({ to: email, subject, text }).catch((err) =>
+    sendEmail({ to: normalizedEmail, subject, text }).catch((err) =>
       console.error(`Background email send error: ${err.message}`)
     );
 
     res.status(200).json({
       success: true,
       message: "Password reset instructions sent.",
-      email,
+      email: normalizedEmail,
       ...(process.env.NODE_ENV === "development" && { devOtp: resetCode }),
     });
   } catch (error) {
@@ -358,7 +369,8 @@ export const resetPassword = async (req, res, next) => {
       throw new Error("Email and password are required");
     }
 
-    const user = await User.findOne({ email });
+    const normalizedEmail = String(email).toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       res.status(404);
       throw new Error("User not found");
